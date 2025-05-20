@@ -1,46 +1,47 @@
 {
-	"name": "globaloffensive",
-	"version": "3.2.0",
-	"description": "Exposes a simple API for interacting with the Counter-Strike: Global Offensive/CS2 game coordinator",
-	"keywords": [
-		"csgo",
-		"cs:go",
-		"cs",
-		"counter strike",
-		"counter-strike",
-		"counter strike global offensive",
-		"counter-strike global offensive",
-		"global offensive",
-		"valve",
-		"steam"
-	],
-	"homepage": "https://github.com/DoctorMcKay/node-globaloffensive",
-	"bugs": {
-		"url": "https://github.com/DoctorMcKay/node-globaloffensive/issues"
-	},
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/DoctorMcKay/node-globaloffensive.git"
-	},
-	"dependencies": {
-		"bytebuffer": "^5.0.1",
-		"globaloffensive-sharecode": "^1.1.1",
-		"long": "^5.2.3",
-		"protobufjs": "^7.2.5",
-		"steamid": "^2.0.0"
-	},
-	"peerDependencies": {
-		"steam-user": ">=4.2.0"
-	},
-	"devDependencies": {
-		"protobufjs-cli": "^1.1.2",
-		"steam-user": "^4.26.1"
-	},
-	"scripts": {
-		"generate-protos": "node scripts/generate-protos.js"
-	},
-	"engines": {
-		"node": ">=14.0.0"
-	}
+  "name": "globaloffensive-fork",
+  "version": "3.2.1",
+  "description": "Exposes a simple API for interacting with the Counter-Strike: Global Offensive/CS2 game coordinator",
+  "keywords": [
+    "csgo",
+    "cs:go",
+    "cs",
+    "counter strike",
+    "counter-strike",
+    "counter strike global offensive",
+    "counter-strike global offensive",
+    "global offensive",
+    "valve",
+    "steam"
+  ],
+  "homepage": "https://github.com/DoctorMcKay/node-globaloffensive",
+  "bugs": {
+    "url": "https://github.com/DoctorMcKay/node-globaloffensive/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DoctorMcKay/node-globaloffensive.git"
+  },
+  "dependencies": {
+    "bytebuffer": "^5.0.1",
+    "globaloffensive-sharecode": "^1.1.1",
+    "long": "^5.2.3",
+    "once": "^1.4.0",
+    "protobufjs": "^7.2.5",
+    "steamid": "^2.0.0"
+  },
+  "peerDependencies": {
+    "steam-user": ">=4.2.0"
+  },
+  "devDependencies": {
+    "protobufjs-cli": "^1.1.2",
+    "steam-user": "^4.26.1"
+  },
+  "scripts": {
+    "generate-protos": "node scripts/generate-protos.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
 }
