@@ -274,13 +274,12 @@ GlobalOffensive.prototype.requestLiveGameForUser = function (steamid) {
   );
 };
 
-GlobalOffensive.prototype.inspectItem = function (owner, assetid, d, callback) {
+GlobalOffensive.prototype.inspectItem = async function (owner, assetid, d) {
   let match;
   if (
     typeof owner === "string" &&
     (match = owner.match(/[SM](\d+)A(\d+)D(\d+)$/))
   ) {
-    callback = assetid;
     owner = match[1];
     assetid = match[2];
     d = match[3];
@@ -318,20 +317,26 @@ GlobalOffensive.prototype.inspectItem = function (owner, assetid, d, callback) {
     Protos.CMsgGCCStrike15_v2_Client2GCEconPreviewDataBlockRequest,
     msg
   );
-  if (callback) {
-    let timeout;
-    let listener = (item) => {
-      clearTimeout(timeout);
-      callback(item);
-    };
-    timeout = setTimeout(() => {
-      this.removeListener("inspectItemInfo#" + assetid, listener);
-      this.emit("inspectItemTimedOut", assetid);
-      this.emit("inspectItemTimedOut#" + assetid, assetid);
-    }, 10000);
 
-    this.once("inspectItemInfo#" + assetid, listener);
-  }
+  const [error, item] = await catchError(
+    once(this, `inspectItemInfo#${assetid}`, {
+      signal: AbortSignal.timeout(10 * 1000),
+    })
+  );
+
+  if (!error)
+    return [
+      undefined,
+      {
+        paintIndex: item.paintindex,
+        paintWear: item.paintwear,
+        paintSeed: item.paintseed,
+        stickers: item.stickers,
+        keychains: item.keychains,
+      },
+    ];
+
+  if (error.name === "AbortError") return [`inspectItemTimedOut`, undefined];
 };
 
 GlobalOffensive.prototype.requestPlayersProfile = function (steamid, callback) {
@@ -413,43 +418,78 @@ GlobalOffensive.prototype.craft = function (items, recipe) {
 /**
  * Put an item from your inventory into a casket (aka a storage unit).
  * @param {int} casketId
- * @param {int} itemId
+ * @param {int} assetId
  */
-GlobalOffensive.prototype.addToCasket = async function (casketId, itemId) {
+GlobalOffensive.prototype.addToCasket = async function (casketId, assetId) {
+  if (
+    (typeof casketId !== "string" && typeof casketId !== "number") ||
+    (typeof assetId !== "string" && typeof assetId !== "number")
+  ) {
+    throw new Error("TypeError: Expected string or number");
+  }
+
   this._send(Language.CasketItemAdd, Protos.CMsgCasketItem, {
     casket_item_id: casketId,
-    item_item_id: itemId,
+    item_item_id: assetId,
   });
 
-  const [error, addedItem] = await catchError(
-    once(this, "itemRemoved", {
-      signal: AbortSignal.timeout(10 * 1000),
-    })
-  );
-  if (!error) return [undefined, addedItem];
-  if (error.name === "AbortError") return [error, undefined];
-  throw error;
+  const abortSignal = AbortSignal.timeout(5 * 1000);
+
+  while (true) {
+    const [error, itemId, notificationType] = await catchError(
+      once(this, "itemCustomizationNotification", {
+        signal: abortSignal,
+      })
+    );
+    if (
+      notificationType ===
+      GlobalOffensive.itemCustomizationNotification.CasketTooFull
+    )
+      return [
+        {
+          message: `Casket ${casketId} is full`,
+          id: GlobalOffensive.itemCustomizationNotification.CasketTooFull,
+        },
+        undefined,
+      ];
+    if (
+      notificationType ===
+      GlobalOffensive.itemCustomizationNotification.CasketAdded
+    )
+      return [undefined, itemId];
+    if (error) return [error, undefined];
+  }
 };
 
 /**
  * Remove an item from a casket (aka a storage unit) into your inventory.
  * @param {int} casketId
- * @param {int} itemId
+ * @param {int} assetId
  */
-GlobalOffensive.prototype.removeFromCasket = async function (casketId, itemId) {
+GlobalOffensive.prototype.removeFromCasket = async function (
+  casketId,
+  assetId
+) {
+  if (
+    (typeof casketId !== "string" && typeof casketId !== "number") ||
+    (typeof assetId !== "string" && typeof assetId !== "number")
+  ) {
+    throw new Error("TypeError: Expected string or number");
+  }
+
   this._send(Language.CasketItemExtract, Protos.CMsgCasketItem, {
     casket_item_id: casketId,
-    item_item_id: itemId,
+    item_item_id: assetId,
   });
 
   const [error, removedItem] = await catchError(
     once(this, "itemAcquired", {
-      signal: AbortSignal.timeout(10 * 1000),
+      signal: AbortSignal.timeout(5 * 1000),
     })
   );
+
   if (!error) return [undefined, removedItem];
-  if (error.name === "AbortError") return [error, undefined];
-  throw error;
+  return [error, undefined];
 };
 /**
  * Get the contents of a casket (aka a storage unit).
@@ -457,6 +497,9 @@ GlobalOffensive.prototype.removeFromCasket = async function (casketId, itemId) {
  * @
  */
 GlobalOffensive.prototype.getCasketContents = async function (casketId) {
+  if (typeof casketId !== "string" && typeof casketId !== "number") {
+    throw new Error("TypeError: Expected string or number");
+  }
   // First see if we already have this casket's contents in our inventory
   let casketItem = this.inventory.find((item) => item.id == casketId);
   if (!casketItem) {
@@ -482,20 +525,20 @@ GlobalOffensive.prototype.getCasketContents = async function (casketId) {
     item_item_id: casketId,
   });
 
-  const abortSignal = AbortSignal.timeout(30 * 1000);
+  const abortSignal = AbortSignal.timeout(15 * 1000);
   while (true) {
     const [error, itemIds, notificationType] = await catchError(
       once(this, "itemCustomizationNotification", {
         signal: abortSignal,
       })
     );
+    if (error?.name === "AbortError") return [error, undefined];
     if (
       itemIds?.[0] != casketId ||
       notificationType !=
         GlobalOffensive.ItemCustomizationNotification.CasketContents
     )
       continue;
-    if (error?.name === "AbortError") return [error, undefined];
     if (!error)
       return [
         undefined,
@@ -507,11 +550,10 @@ GlobalOffensive.prototype.getCasketContents = async function (casketId) {
 function catchError(promise, errorsToCatch) {
   return promise
     .then((data) => {
+      if (Array.isArray(data)) return [undefined, ...data];
       return [undefined, data];
     })
     .catch((error) => {
-      error = this.convertError(error);
-      this.account.animation.displayWarning(error.message);
       if (errorsToCatch === undefined) return [error];
       if (errorsToCatch.some((e) => error instanceof e)) return [error];
       throw error;

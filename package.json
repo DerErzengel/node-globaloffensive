@@ -1,7 +1,7 @@
 {
-  "name": "globaloffensive-fork",
-  "version": "3.2.1",
-  "description": "Exposes a simple API for interacting with the Counter-Strike: Global Offensive/CS2 game coordinator",
+  "name": "globaloffensive-promise",
+  "version": "3.2.6",
+  "description": "Simply a complete Fork of globaloffensive with some Functions adjusted to support Promises. | A simple API for interacting with the Counter-Strike: Global Offensive/CS2 game coordinator",
   "keywords": [
     "csgo",
     "cs:go",
